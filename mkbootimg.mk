@@ -1,0 +1,21 @@
+LOCAL_PATH := $(call my-dir)
+
+INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
+$(INSTALLED_BOOTIMAGE_TARGET): $(PRODUCT_OUT)/kernel $(recovery_ramdisk) $(INSTALLED_RAMDISK_TARGET) $(MKBOOTIMG) $(MINIGZIP) $(INTERNAL_BOOTIMAGE_FILES)
+	$(call pretty,"Boot image: $@")
+	$(hide) mkdir -p $(PRODUCT_OUT)/mkbootimg/
+	$(hide) cp -R $(PRODUCT_OUT)/root/* $(PRODUCT_OUT)/mkbootimg/
+	$(hide) cp -R $(LOCAL_PATH)/rootdir/init.environ.rc $(PRODUCT_OUT)/mkbootimg/
+	$(hide) cp -R $(LOCAL_PATH)/rootdir/init.bluetooth.rc $(PRODUCT_OUT)/mkbootimg/
+	$(hide) cp -R $(LOCAL_PATH)/rootdir/init $(PRODUCT_OUT)/mkbootimg/
+	$(hide) $(MKBOOTFS) $(PRODUCT_OUT)/mkbootimg > $(PRODUCT_OUT)/mkbootimg.cpio
+	$(hide) cat $(PRODUCT_OUT)/mkbootimg.cpio | gzip > $(PRODUCT_OUT)/mkbootimg.fs
+	$(hide) $(MKBOOTIMG) --kernel $(PRODUCT_OUT)/kernel --ramdisk $(PRODUCT_OUT)/mkbootimg.fs --cmdline "$(BOARD_KERNEL_CMDLINE)" --base $(BOARD_KERNEL_BASE) --pagesize $(BOARD_KERNEL_PAGESIZE) $(BOARD_MKBOOTIMG_ARGS) -o $@
+
+INSTALLED_RECOVERYIMAGE_TARGET := $(PRODUCT_OUT)/recovery.img
+$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
+	$(recovery_ramdisk) \
+	$(recovery_kernel)
+	@echo ----- Making recovery image ------
+	$(hide) $(MKBOOTIMG) --kernel $(PRODUCT_OUT)/kernel --ramdisk $(PRODUCT_OUT)/ramdisk-recovery.img --cmdline "$(BOARD_KERNEL_CMDLINE)" --base $(BOARD_KERNEL_BASE) --pagesize $(BOARD_KERNEL_PAGESIZE) $(BOARD_MKBOOTIMG_ARGS)  -o $@
+	@echo ----- Made recovery image -------- $@

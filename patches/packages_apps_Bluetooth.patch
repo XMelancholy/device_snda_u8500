@@ -1,0 +1,28 @@
+
+project packages/apps/Bluetooth/
+diff --git a/packages/apps/Bluetooth/src/com/android/bluetooth/gatt/GattService.java b/packages/apps/Bluetooth/src/com/android/bluetooth/gatt/GattService.java
+index fa05c98..49c56f6 100644
+--- a/packages/apps/Bluetooth/src/com/android/bluetooth/gatt/GattService.java
++++ b/packages/apps/Bluetooth/src/com/android/bluetooth/gatt/GattService.java
+@@ -777,7 +777,7 @@ public class GattService extends ProfileService {
+             // Find additional included services
+             gattClientGetIncludedServiceNative(connId,
+                 srvcType, srvcInstId, srvcUuidLsb, srvcUuidMsb,
+-                inclSrvcType, inclSrvcInstId, inclSrvcUuidLsb, inclSrvcUuidMsb);
++                inclSrvcInstId, inclSrvcType, inclSrvcUuidLsb, inclSrvcUuidMsb);
+         } else {
+             // Discover descriptors now
+             continueSearch(connId, 0);
+diff --git a/packages/apps/Bluetooth/src/com/android/bluetooth/hdp/HealthService.java b/packages/apps/Bluetooth/src/com/android/bluetooth/hdp/HealthService.java
+index 9ca76a4..6b3f80a 100644
+--- a/packages/apps/Bluetooth/src/com/android/bluetooth/hdp/HealthService.java
++++ b/packages/apps/Bluetooth/src/com/android/bluetooth/hdp/HealthService.java
+@@ -212,6 +212,8 @@ public class HealthService extends ProfileService {
+                                                   BluetoothHealth.STATE_CHANNEL_DISCONNECTED,
+                                                   BluetoothHealth.STATE_CHANNEL_DISCONNECTING,
+                                                   chan.mChannelFd, chan.mChannelId);
++                    } else {
++                        mHealthChannels.add(chan);
+                     }
+                 }
+                     break;

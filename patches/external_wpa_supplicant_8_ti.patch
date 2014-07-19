@@ -1,0 +1,68 @@
+
+project external/wpa_supplicant_8_ti/
+diff --git a/external/wpa_supplicant_8_ti/hostapd/Android.mk b/external/wpa_supplicant_8_ti/hostapd/Android.mk
+index ba15b9e..b79986e 100644
+--- a/external/wpa_supplicant_8_ti/hostapd/Android.mk
++++ b/external/wpa_supplicant_8_ti/hostapd/Android.mk
+@@ -44,13 +44,20 @@ endif
+ 
+ # Use Android specific directory for control interface sockets
+ L_CFLAGS += -DCONFIG_CTRL_IFACE_CLIENT_DIR=\"/data/misc/wifi/sockets\"
++ifdef USES_TI_MAC80211
++L_CFLAGS += -DCONFIG_CTRL_IFACE_DIR=\"/data/system/wpa_supplicant\"
++else
+ L_CFLAGS += -DCONFIG_CTRL_IFACE_DIR=\"/data/system/hostapd\"
++endif
+ 
+ # To force sizeof(enum) = 4
+ ifeq ($(TARGET_ARCH),arm)
+ L_CFLAGS += -mabi=aapcs-linux
+ endif
+ 
++# To allow non-ASCII characters in SSID
++L_CFLAGS += -DWPA_UNICODE_SSID
++
+ INCLUDES = $(LOCAL_PATH)
+ INCLUDES += $(LOCAL_PATH)/src
+ INCLUDES += $(LOCAL_PATH)/src/utils
+diff --git a/external/wpa_supplicant_8_ti/hostapd/ctrl_iface.c b/external/wpa_supplicant_8_ti/hostapd/ctrl_iface.c
+index 53d4ac1..889afd8 100644
+--- a/external/wpa_supplicant_8_ti/hostapd/ctrl_iface.c
++++ b/external/wpa_supplicant_8_ti/hostapd/ctrl_iface.c
+@@ -14,6 +14,10 @@
+ #include <sys/stat.h>
+ #include <stddef.h>
+ 
++#ifdef USES_TI_MAC80211
++#include <cutils/sockets.h>
++#endif /* USES_TI_MAC80211 */
++
+ #include "utils/common.h"
+ #include "utils/eloop.h"
+ #include "common/version.h"
+@@ -1220,6 +1224,14 @@ int hostapd_ctrl_iface_init(struct hostapd_data *hapd)
+ 	if (hapd->conf->ctrl_interface == NULL)
+ 		return 0;
+ 
++#ifdef USES_TI_MAC80211
++        os_snprintf(addr.sun_path, sizeof(addr.sun_path), "wpa_%s",
++                    hapd->conf->ctrl_interface);
++        s = android_get_control_socket(addr.sun_path);
++        if (s >= 0)
++                goto havesock;
++#endif /* USES_TI_MAC80211 */
++
+ 	if (mkdir(hapd->conf->ctrl_interface, S_IRWXU | S_IRWXG) < 0) {
+ 		if (errno == EEXIST) {
+ 			wpa_printf(MSG_DEBUG, "Using existing control "
+@@ -1330,6 +1342,10 @@ int hostapd_ctrl_iface_init(struct hostapd_data *hapd)
+ 	}
+ 	os_free(fname);
+ 
++#ifdef USES_TI_MAC80211
++havesock:
++#endif /* USES_TI_MAC80211 */
++
+ 	hapd->ctrl_sock = s;
+ 	eloop_register_read_sock(s, hostapd_ctrl_iface_receive, hapd,
+ 				 NULL);

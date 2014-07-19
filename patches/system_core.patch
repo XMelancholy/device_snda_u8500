@@ -1,0 +1,186 @@
+
+project system/core/
+diff --git a/system/core/include/system/audio.h b/system/core/include/system/audio.h
+index a953536..bbb78ea 100644
+--- a/system/core/include/system/audio.h
++++ b/system/core/include/system/audio.h
+@@ -101,6 +101,18 @@ typedef enum {
+ } qcom_audio_source_t;
+ #endif
+ 
++#ifdef STE_HARDWARE
++// AUDIO_INPUT_CLIENT_ID_BASE provide a means to refer to client Id´s not explicitly defined in the enum audio_input_clients
++typedef enum audio_input_clients {
++        AUDIO_INPUT_CLIENT_ID1 = 0x1,
++        AUDIO_INPUT_CLIENT_ID2 = 0x2,
++        AUDIO_INPUT_CLIENT_ID3 = 0x3,
++        AUDIO_INPUT_CLIENT_ID4 = 0x4,
++        AUDIO_INPUT_CLIENT_PLAYBACK = 0x80000000, // request client of playback type
++        AUDIO_INPUT_CLIENT_RECORD = 0x80000001   // request client of recording type
++} audio_input_clients;
++#endif
++
+ /* special audio session values
+  * (XXX: should this be living in the audio effects land?)
+  */
+@@ -201,6 +213,20 @@ typedef enum {
+     AUDIO_FORMAT_EVRCNW              = 0x16000000UL,
+     AUDIO_FORMAT_PCM_OFFLOAD         = 0x17000000UL,
+ #endif
++#ifdef STE_HARDWARE
++    /* ST-E support for extended audio formats */
++    AUDIO_FORMAT_AC3                 = 0x08000000UL,
++    AUDIO_FORMAT_MPEG1               = 0x09000000UL,
++    AUDIO_FORMAT_MPEG2               = 0x0A000000UL,
++    AUDIO_FORMAT_DTS                 = 0x0B000000UL,
++    AUDIO_FORMAT_ATRAC               = 0x0C000000UL,
++    AUDIO_FORMAT_OBA                 = 0x0D000000UL,
++    AUDIO_FORMAT_DDPLUS              = 0x0E000000UL,
++    AUDIO_FORMAT_DTS_HD              = 0x0F000000UL,
++    AUDIO_FORMAT_MAT                 = 0x10000000UL,
++    AUDIO_FORMAT_DST                 = 0x11000000UL,
++    AUDIO_FORMAT_WMA_PRO             = 0x12000000UL,
++#endif
+     AUDIO_FORMAT_MAIN_MASK           = 0xFF000000UL,
+     AUDIO_FORMAT_SUB_MASK            = 0x00FFFFFFUL,
+ 
+diff --git a/system/core/include/system/graphics.h b/system/core/include/system/graphics.h
+index fd7b681..9da7ed9 100644
+--- a/system/core/include/system/graphics.h
++++ b/system/core/include/system/graphics.h
+@@ -242,6 +242,25 @@ enum {
+     HAL_PIXEL_FORMAT_YCbCr_422_I        = 0x14, // YUY2
+ };
+ 
++#ifdef STE_HARDWARE
++enum {
++    /* STE: Added Support of YUV42XMBN, required for Copybit CC acceleration */
++    HAL_PIXEL_FORMAT_YCBCR42XMBN = 0xE,
++    HAL_PIXEL_FORMAT_YCbCr_422_P        = 0x12,
++    HAL_PIXEL_FORMAT_YCbCr_420_P        = 0x13,
++	HAL_PIXEL_FORMAT_YCbCr_420_I        = 0x15,
++    HAL_PIXEL_FORMAT_CbYCrY_422_I       = 0x16,
++    HAL_PIXEL_FORMAT_CbYCrY_420_I       = 0x17,
++    HAL_PIXEL_FORMAT_YCbCr_420_SP_TILED = 0x20,
++    HAL_PIXEL_FORMAT_YCbCr_420_SP       = 0x21,
++    HAL_PIXEL_FORMAT_YCrCb_420_SP_TILED = 0x22,
++    HAL_PIXEL_FORMAT_YCrCb_422_SP       = 0x23,
++    HAL_PIXEL_FORMAT_YCrCb_422_P        = 0x24,
++    HAL_PIXEL_FORMAT_YCrCb_420_P        = 0x25,
++};
++#endif
++
++
+ /*
+  * Structure for describing YCbCr formats for consumption by applications.
+  * This is used with HAL_PIXEL_FORMAT_YCbCr_*_888.
+diff --git a/system/core/include/utils/Flattenable.h b/system/core/include/utils/Flattenable.h
+index 882a8b2..d9ba3c0 100644
+--- a/system/core/include/utils/Flattenable.h
++++ b/system/core/include/utils/Flattenable.h
+@@ -79,21 +79,35 @@ public:
+  * Flattenable objects must implement this protocol.
+  */
+ 
++#ifndef STE_HARDWARE
+ template <typename T>
++#endif
+ class Flattenable {
+ public:
+     // size in bytes of the flattened object
++#ifdef STE_HARDWARE
++    virtual size_t getFlattenedSize() const = 0;
++#else
+     inline size_t getFlattenedSize() const;
++#endif
+ 
+     // number of file descriptors to flatten
++#ifdef STE_HARDWARE
++    virtual size_t getFdCount() const = 0;
++#else
+     inline size_t getFdCount() const;
++#endif
+ 
+     // flattens the object into buffer.
+     // size should be at least of getFlattenedSize()
+     // file descriptors are written in the fds[] array but ownership is
+     // not transfered (ie: they must be dupped by the caller of
+     // flatten() if needed).
++#ifdef STE_HARDWARE
++    virtual status_t flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const =0 ;
++#else
+     inline status_t flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const;
++#endif
+ 
+     // unflattens the object from buffer.
+     // size should be equal to the value of getFlattenedSize() when the
+@@ -102,9 +116,16 @@ public:
+     // don't need to be dupped(). ie: the caller of unflatten doesn't
+     // keep ownership. If a fd is not retained by unflatten() it must be
+     // explicitly closed.
++#ifdef STE_HARDWARE
++    virtual status_t unflatten(void const*& buffer, size_t& size, int const*& fds, size_t& count) = 0;
++	protected:
++	virtual ~Flattenable() = 0;
++#else
+     inline status_t unflatten(void const*& buffer, size_t& size, int const*& fds, size_t& count);
++#endif
+ };
+ 
++#ifndef STE_HARDWARE
+ template<typename T>
+ inline size_t Flattenable<T>::getFlattenedSize() const {
+     return static_cast<T const*>(this)->T::getFlattenedSize();
+@@ -123,6 +144,7 @@ inline status_t Flattenable<T>::unflatten(
+         void const*& buffer, size_t& size, int const*& fds, size_t& count) {
+     return static_cast<T*>(this)->T::unflatten(buffer, size, fds, count);
+ }
++#endif
+ 
+ /*
+  * LightFlattenable is a protocol allowing object to serialize themselves out
+diff --git a/system/core/libutils/Android.mk b/system/core/libutils/Android.mk
+index 720443e..c7f7e91 100644
+--- a/system/core/libutils/Android.mk
++++ b/system/core/libutils/Android.mk
+@@ -43,6 +43,10 @@ commonSources:= \
+ 	VectorImpl.cpp \
+ 	misc.cpp
+ 
++ifeq ($(BOARD_USES_STE_HARDWARE),true)
++commonSources += Flattenable.cpp
++endif
++
+ host_commonCflags := -DLIBUTILS_NATIVE=1 $(TOOL_CFLAGS)
+ 
+ ifeq ($(HOST_OS),windows)
+diff --git a/system/core/libutils/Flattenable.cpp b/system/core/libutils/Flattenable.cpp
+new file mode 100644
+index 0000000..1f2ffaa
+--- /dev/null
++++ b/system/core/libutils/Flattenable.cpp
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2006 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <utils/Flattenable.h>
++
++namespace android {
++
++Flattenable::~Flattenable() {
++}
++
++}; // namespace android

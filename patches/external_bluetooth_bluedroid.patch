@@ -1,0 +1,18 @@
+
+project external/bluetooth/bluedroid/
+diff --git a/external/bluetooth/bluedroid/Android.mk b/external/bluetooth/bluedroid/Android.mk
+index 0216dbf..80e802e 100644
+--- a/external/bluetooth/bluedroid/Android.mk
++++ b/external/bluetooth/bluedroid/Android.mk
+@@ -1,4 +1,5 @@
+ LOCAL_PATH := $(call my-dir)
++ifneq ($(BOARD_HAVE_BLUETOOTH_BLUEZ),true)
+ 
+ # Setup bdroid local make variables for handling configuration
+ ifneq ($(BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR),)
+@@ -20,3 +21,5 @@ include $(call all-subdir-makefiles)
+ # Cleanup our locals
+ bdroid_C_INCLUDES :=
+ bdroid_CFLAGS :=
++
++endif#BOARD_HAVE_BLUETOOTH_BLUEZ
